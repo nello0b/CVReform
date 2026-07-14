@@ -157,6 +157,14 @@ ENV/
 env.bak/
 venv.bak/
 
+# Node
+node_modules/
+frontend/dist/
+
+# Uploaded CVs
+storage/uploads/
+storage/test-uploads/
+
 # Spyder project settings
 .spyderproject
 .spyproject
@@ -216,3 +224,4 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+.vscode/settings.json
