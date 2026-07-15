@@ -165,6 +165,10 @@ frontend/dist/
 storage/uploads/
 storage/test-uploads/
 
+# Local documents used by manual conversion experiments
+scripts/*.docx
+scripts/*.pdf
+
 # Spyder project settings
 .spyderproject
 .spyproject

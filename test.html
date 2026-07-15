@@ -1,0 +1,354 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Netanel Berkovits — Software Engineer</title>
+    <style>
+      :root {
+        --green: #00ad49;
+        --ink: #000;
+        --paper: #fff;
+        --page-border: #b8b8b8;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      html,
+      body {
+        margin: 0;
+        padding: 0;
+        background: #ececec;
+        color: var(--ink);
+        font-family: Arial, Helvetica, sans-serif;
+      }
+
+      body {
+        padding: 4px 0;
+      }
+
+      .resume {
+        width: 554px;
+        min-height: 783px;
+        margin: 0 auto;
+        padding: 30px 31px 22px;
+        background: var(--paper);
+        border: 1px solid var(--page-border);
+      }
+
+      header {
+        text-align: center;
+      }
+
+      h1 {
+        margin: 0;
+        font-size: 27px;
+        line-height: 1.05;
+        font-weight: 700;
+      }
+
+      .contact {
+        margin-top: 3px;
+        padding-top: 4px;
+        border-top: 1px solid var(--ink);
+        font-size: 9px;
+        line-height: 1.2;
+        white-space: nowrap;
+      }
+
+      .contact a {
+        color: #0000ee;
+        text-decoration: underline;
+      }
+
+      .role {
+        margin: 4px 0 0;
+        color: var(--green);
+        font-size: 20px;
+        line-height: 1.05;
+        font-weight: 700;
+      }
+
+      .skills {
+        margin: 5px 0 0;
+        padding-top: 4px;
+        border-top: 1px solid var(--ink);
+        font-size: 11px;
+        line-height: 1.2;
+        font-weight: 700;
+        text-align: center;
+      }
+
+      .summary {
+        margin: 4px 0 7px;
+        font-size: 11px;
+        line-height: 1.18;
+        text-align: center;
+      }
+
+      section {
+        margin-top: 3px;
+      }
+
+      .section-title {
+        margin: 0 0 5px;
+        padding-bottom: 2px;
+        border-bottom: 1px solid var(--ink);
+        color: var(--green);
+        font-size: 14px;
+        line-height: 1;
+        font-weight: 700;
+        text-transform: uppercase;
+      }
+
+      .entry-heading {
+        display: grid;
+        grid-template-columns: 1fr auto;
+        align-items: baseline;
+        gap: 10px;
+        margin: 0 0 2px;
+        font-size: 11px;
+        line-height: 1.15;
+      }
+
+      .entry-heading .left {
+        min-width: 0;
+      }
+
+      .entry-heading strong {
+        font-weight: 700;
+      }
+
+      .date {
+        white-space: nowrap;
+      }
+
+      .project-title {
+        margin: 0 0 3px;
+        font-size: 11px;
+        line-height: 1.2;
+      }
+
+      ul {
+        margin: 2px 0 5px 16px;
+        padding: 0;
+        font-size: 11px;
+        line-height: 1.16;
+      }
+
+      li {
+        margin: 0 0 1px 0;
+        padding-left: 1px;
+      }
+
+      .languages {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 0 16px;
+        margin-top: 2px;
+        font-size: 11px;
+        line-height: 1.2;
+      }
+
+      .language-item {
+        position: relative;
+        padding-left: 14px;
+      }
+
+      .language-item::before {
+        content: "•";
+        position: absolute;
+        left: 0;
+        top: -1px;
+        font-weight: 700;
+      }
+
+      @media print {
+        @page {
+          size: A4;
+          margin: 0;
+        }
+        html,
+        body {
+          background: #fff;
+        }
+        body {
+          padding: 0;
+        }
+        .resume {
+          width: 210mm;
+          min-height: 297mm;
+          border: none;
+          margin: 0;
+          padding: 11.5mm 12mm 8mm;
+          transform-origin: top left;
+        }
+      }
+
+      @media (max-width: 600px) {
+        body {
+          padding: 0;
+          background: #fff;
+        }
+        .resume {
+          width: 100%;
+          min-height: auto;
+          border: none;
+          padding: 24px 20px;
+        }
+        .contact {
+          white-space: normal;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="resume">
+      <header>
+        <h1>Netanel Berkovits</h1>
+        <div class="contact">
+          055-8882075 |
+          <a href="mailto:netanel.berkovits@gmail.com"
+            >netanel.berkovits@gmail.com</a
+          >
+          | <a href="#">LinkedIn</a> | <a href="#">GitHub</a> |
+          <a href="#">Personal Website</a>
+        </div>
+        <div class="role">Software Engineer</div>
+        <div class="skills">
+          C | C++ | C# | Python | Java | JavaScript | Node.js | React | AI/LLM
+          APIs | SQL | MongoDB
+        </div>
+        <p class="summary">
+          Motivated Computer Science graduate (GPA: 87) with practical
+          experience in designing and building end-to-end distributed systems.
+          Proficient in backend development, database architecture, and RESTful
+          APIs, with hands-on expertise in C#, .NET, Python, and cloud services.
+          Proven ability to self-learn complex technologies and deliver scalable
+          software solutions.
+        </p>
+      </header>
+
+      <section>
+        <h2 class="section-title">Education</h2>
+        <div class="entry-heading">
+          <div class="left">
+            <strong>BSc in Computer Science</strong> – Bar-Ilan University
+          </div>
+          <div class="date">2022-2025</div>
+        </div>
+        <ul>
+          <li>Completed the degree with a <strong>GPA of 87.</strong></li>
+          <li>
+            Developed practical skills through hands-on projects and coursework
+            in various programming languages and technologies such as C, C#,
+            C++, Java, JavaScript, React, SQL, and Python.
+          </li>
+          <li>
+            <strong>Relevant courses:</strong> Projects Seminar (100), Software
+            Engineering (100), Cybersecurity (97), Programming Languages (97),
+            Computational Complexity (94), Object Oriented Programming (91),
+            Algorithms (90), Operating Systems (89), Machine Learning (85).
+          </li>
+        </ul>
+      </section>
+
+      <section>
+        <h2 class="section-title">Projects</h2>
+        <p class="project-title">
+          <strong>Backend and .Net Development</strong> – AI-powered learning
+          assistant for people with ADHD and dyslexia.
+        </p>
+        <ul>
+          <li>
+            Developed backend services in Python using FastAPI and integrated
+            external APIs, including Azure and Auth0.
+          </li>
+          <li>
+            Implemented a prompt pipeline incorporating data cleaning, analysis,
+            and review to generate high-quality learning aids.
+          </li>
+          <li>
+            Used diverse languages and technologies, including C#, .NET 8,
+            Python, FastAPI, MongoDB, Redis, Docker, Azure, and OpenAI GPT APIs.
+          </li>
+        </ul>
+
+        <p class="project-title">
+          <strong>Web &amp; Android Development</strong> – WhatsApp-based
+          Android chat app and website.
+        </p>
+        <ul>
+          <li>
+            Built a web and Android chat application simulating features found
+            in apps like WhatsApp.
+          </li>
+          <li>
+            Used diverse languages and technologies, including JavaScript, HTML,
+            CSS, React, Node.js, Java, MongoDB, and SQL.
+          </li>
+        </ul>
+      </section>
+
+      <section>
+        <h2 class="section-title">Army Service</h2>
+        <div class="entry-heading">
+          <div class="left">
+            <strong>Economic Coordination &amp; Liaison NCO</strong> – IDF,
+            COGAT
+          </div>
+          <div class="date">2019-2021</div>
+        </div>
+        <ul>
+          <li>
+            Facilitated coordination of economic activities between the Israeli
+            government and the Palestinian Authority, working closely with
+            cross-functional teams while maintaining professionalism and
+            cultural sensitivity.
+          </li>
+          <li>
+            Successfully reduced report production time by 85% (from 2+ hours to
+            20 minutes), significantly improving department response times and
+            data accuracy.
+          </li>
+          <li>
+            Demonstrated strong initiative, ownership, and problem-solving under
+            pressure.
+          </li>
+        </ul>
+      </section>
+
+      <section>
+        <h2 class="section-title">Community Involvement</h2>
+        <div class="entry-heading">
+          <div class="left">
+            <strong>Math Tutor</strong> – Center for Educational Technology
+            (מט״ח)
+          </div>
+          <div class="date">2023-2024</div>
+        </div>
+        <ul>
+          <li>
+            Provided academic support to high-school students preparing for
+            Bagrut exams during the first year of the October 7 war.
+          </li>
+          <li>
+            Adapted explanations to different levels, broke down complex
+            problems into clear, step-by-step solutions, and helped students
+            develop mathematical thinking.
+          </li>
+        </ul>
+      </section>
+
+      <section>
+        <h2 class="section-title">Languages</h2>
+        <div class="languages">
+          <div class="language-item">Hebrew (native language)</div>
+          <div class="language-item">English (fluent)</div>
+        </div>
+      </section>
+    </main>
+  </body>
+</html>

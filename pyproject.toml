@@ -5,7 +5,7 @@ build-backend = "hatchling.build"
 [project]
 name = "cvreform"
 version = "0.1.0"
-description = "Convert PDF and DOCX CVs into editable LaTeX documents."
+description = "Convert DOCX and PDF CVs into editable, style-preserving web documents."
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [

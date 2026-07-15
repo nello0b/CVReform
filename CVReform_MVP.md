@@ -2,31 +2,32 @@
 
 ## Goal
 
-Convert an uploaded PDF or DOCX CV into an editable LaTeX document and generated PDF.
+Convert an uploaded DOCX or PDF CV into an editable web document that preserves its visual style.
 
 ## Main Flow
 
 1. Upload CV
-2. Extract its content
-3. Convert content to structured JSON
-4. Generate LaTeX
-5. Compile to PDF
-6. Download `.tex` and `.pdf` files
+2. Validate and store the document
+3. Create a PDF visual reference for DOCX input when PDF support is enabled
+4. Extract the document content and render its visual appearance
+5. Generate matching HTML and CSS
+6. Edit the CV in the browser
+7. Export the edited CV to PDF
 
 ## MVP Features
 
-- PDF and DOCX upload
-- CV text and section extraction
-- Structured JSON output
-- LaTeX generation
-- Basic design recreation
-- PDF compilation
-- File download
+- DOCX upload
+- Independently configurable DOCX and PDF inputs
+- Optional DOCX-to-PDF visual-reference conversion with LibreOffice
+- Document validation and storage
+- Style-preserving HTML and CSS generation
+- Browser-based text editing
+- PDF export
 - Clear error messages
 
 ## Success Criteria
 
-The MVP is complete when a user can upload a CV and receive a readable, editable LaTeX version and a compiled PDF containing the original information.
+The MVP is complete when a user can upload a supported CV, edit its content in a visually faithful web version, and export the result to PDF.
 
 ## Not Included Yet
 
@@ -34,4 +35,4 @@ The MVP is complete when a user can upload a CV and receive a readable, editable
 - User accounts
 - Saved history
 - Multiple templates
-- Pixel-perfect recreation
+- Advanced layout editing

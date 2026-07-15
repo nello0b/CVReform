@@ -7,7 +7,7 @@ from app.routers.uploads import router as uploads_router
 def create_app() -> FastAPI:
     app = FastAPI(
         title="CVReform API",
-        description="Convert uploaded CVs into structured data and LaTeX documents.",
+        description="Convert uploaded DOCX or PDF CVs into editable web documents.",
         version="0.1.0",
     )
     app.include_router(health_router, prefix="/api/v1")

@@ -171,6 +171,11 @@ h1 {
   background: #f1f4ff;
 }
 
+.file-picker--disabled {
+  cursor: wait;
+  opacity: 0.65;
+}
+
 .upload-icon {
   display: grid;
   width: 2.8rem;
@@ -264,6 +269,11 @@ h1 {
   color: #b42318;
 }
 
+.remove-button:disabled {
+  cursor: wait;
+  opacity: 0.55;
+}
+
 .primary-button {
   width: 100%;
   margin-top: 0.25rem;
@@ -300,6 +310,19 @@ h1 {
 .form-message--success {
   color: #14733b;
   font-weight: 700;
+}
+
+.upload-reference {
+  margin: 0.35rem 0 0;
+  color: #5c6880;
+  font-size: 0.72rem;
+  line-height: 1.5;
+}
+
+.upload-reference code {
+  color: #33405a;
+  font-size: 0.68rem;
+  word-break: break-all;
 }
 
 .privacy-note {

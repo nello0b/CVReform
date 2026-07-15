@@ -1,6 +1,9 @@
 param(
     # Show Uvicorn startup and request logs alongside Vite output.
-    [switch]$ShowBackendLogs
+    [switch]$ShowBackendLogs,
+
+    # Show backend logs at debug level and enable CV upload metadata logging.
+    [switch]$Debug
 )
 
 # Treat PowerShell errors as fatal so setup never continues in a broken state.
@@ -12,6 +15,7 @@ $VenvPath = Join-Path $ProjectRoot ".venv"
 $VenvPython = Join-Path $VenvPath "Scripts\python.exe"
 $PythonDependencyStamp = Join-Path $VenvPath ".cvreform-dependencies"
 $PyprojectPath = Join-Path $ProjectRoot "pyproject.toml"
+$BackendEnvPath = Join-Path $ProjectRoot ".env"
 $FrontendPath = Join-Path $ProjectRoot "frontend"
 $FrontendEnvPath = Join-Path $FrontendPath ".env"
 $FrontendPackagePath = Join-Path $FrontendPath "package.json"
@@ -19,6 +23,19 @@ $FrontendLockPath = Join-Path $FrontendPath "package-lock.json"
 $FrontendModulesPath = Join-Path $FrontendPath "node_modules"
 
 Set-Location $ProjectRoot
+
+function Get-EnvironmentFileValue {
+    param([string]$Path, [string]$Name)
+
+    $Setting = Get-Content $Path |
+        Where-Object { $_ -match "^\s*$([regex]::Escape($Name))\s*=" } |
+        Select-Object -Last 1
+    if (-not $Setting) {
+        return $null
+    }
+
+    return (($Setting -split '=', 2)[1].Trim()).Trim('"').Trim("'")
+}
 
 # Create the isolated Python environment only on the first run.
 if (-not (Test-Path $VenvPython)) {
@@ -130,26 +147,56 @@ if ($PortIsInUse) {
 
 # Start FastAPI in the background so Vite can remain interactive in this terminal.
 Write-Host "Starting FastAPI at $($BackendUri.GetLeftPart([UriPartial]::Authority))" -ForegroundColor Green
+$UvicornArguments = @(
+    "-m", "uvicorn", "app.main:app", "--reload",
+    "--host", $BackendHost, "--port", $BackendPort
+)
+if ($Debug) {
+    $UvicornArguments += @("--log-level", "debug")
+    Write-Host "Debug logging is enabled (file contents are never printed)." -ForegroundColor Yellow
+}
+
 $BackendArguments = @{
     FilePath = $VenvPython
-    ArgumentList = @(
-        "-m", "uvicorn", "app.main:app", "--reload",
-        "--host", $BackendHost, "--port", $BackendPort
-    )
+    ArgumentList = $UvicornArguments
     WorkingDirectory = $ProjectRoot
     PassThru = $true
 }
 
-if ($ShowBackendLogs) {
+if ($ShowBackendLogs -or $Debug) {
     $BackendArguments["NoNewWindow"] = $true
 }
 else {
     $BackendArguments["WindowStyle"] = "Hidden"
 }
 
-$Backend = Start-Process @BackendArguments
+# Load the backend's private feature flags for the child FastAPI process.
+$ManagedBackendSettings = @(
+    "CVREFORM_ACCEPT_DOCX",
+    "CVREFORM_ACCEPT_PDF",
+    "CVREFORM_CONVERT_DOCX_TO_PDF",
+    "SOFFICE_PATH"
+)
+$PreviousBackendSettings = @{}
+foreach ($SettingName in $ManagedBackendSettings) {
+    $PreviousBackendSettings[$SettingName] =
+        [Environment]::GetEnvironmentVariable($SettingName, "Process")
 
+    if (Test-Path $BackendEnvPath) {
+        $SettingValue = Get-EnvironmentFileValue $BackendEnvPath $SettingName
+        if ($null -ne $SettingValue) {
+            [Environment]::SetEnvironmentVariable($SettingName, $SettingValue, "Process")
+        }
+    }
+}
+
+$PreviousDebugSetting = $env:CVREFORM_DEBUG
+$env:CVREFORM_DEBUG = if ($Debug) { "1" } else { "0" }
+$Backend = $null
 try {
+    # Child processes inherit this flag, allowing debug output without changing production behavior.
+    $Backend = Start-Process @BackendArguments
+
     # Give Uvicorn a moment to report immediate startup failures before Vite starts.
     Start-Sleep -Milliseconds 750
     $Backend.Refresh()
@@ -166,5 +213,21 @@ finally {
     # Uvicorn reloads through child processes, so terminate the complete process tree.
     if ($null -ne $Backend) {
         & taskkill.exe /PID $Backend.Id /T /F 2>$null | Out-Null
+    }
+
+    # Leave the caller's environment exactly as it was before running this script.
+    if ($null -eq $PreviousDebugSetting) {
+        Remove-Item Env:CVREFORM_DEBUG -ErrorAction SilentlyContinue
+    }
+    else {
+        $env:CVREFORM_DEBUG = $PreviousDebugSetting
+    }
+
+    foreach ($SettingName in $ManagedBackendSettings) {
+        [Environment]::SetEnvironmentVariable(
+            $SettingName,
+            $PreviousBackendSettings[$SettingName],
+            "Process"
+        )
     }
 }
