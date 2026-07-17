@@ -164,6 +164,11 @@ frontend/dist/
 # Uploaded CVs
 storage/uploads/
 storage/test-uploads/
+storage/test-assets/
+storage/processed/
+
+# Private documents used by opt-in manual tests
+tests/fixtures/manual/
 
 # Local documents used by manual conversion experiments
 scripts/*.docx

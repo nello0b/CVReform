@@ -1,6 +1,7 @@
 from io import BytesIO
 from pathlib import Path
 from shutil import rmtree
+from unittest.mock import AsyncMock
 from uuid import uuid4
 from zipfile import ZipFile
 
@@ -9,10 +10,17 @@ from fastapi.testclient import TestClient
 
 from app.main import app
 from app.routers import uploads
+from app.schemas.cv_html import CVHTMLResult
+from app.services.cv_processing import CVProcessingResult, get_cv_processing_service
+from app.services.document_asset_extractor import (
+    AssetExtractionResult,
+    ExtractedAsset,
+)
 from app.services.document_converter import (
     DocumentConversionError,
     DocumentConverterNotFoundError,
 )
+from app.services.document_link_extractor import ExtractedLink
 
 client = TestClient(app)
 
@@ -20,7 +28,9 @@ client = TestClient(app)
 @pytest.fixture(autouse=True)
 def use_temporary_upload_directory(monkeypatch):
     test_directory = Path("storage/test-uploads") / uuid4().hex
+    processed_directory = test_directory / "processed"
     monkeypatch.setattr(uploads, "UPLOAD_DIRECTORY", test_directory)
+    monkeypatch.setattr(uploads, "PROCESSED_DIRECTORY", processed_directory)
     for setting_name in (
         "CVREFORM_ACCEPT_DOCX",
         "CVREFORM_ACCEPT_PDF",
@@ -28,6 +38,7 @@ def use_temporary_upload_directory(monkeypatch):
     ):
         monkeypatch.delenv(setting_name, raising=False)
     yield
+    app.dependency_overrides.clear()
     rmtree(test_directory, ignore_errors=True)
 
 
@@ -236,3 +247,70 @@ def test_reject_file_over_size_limit() -> None:
 
     assert response.status_code == 413
     assert response.json() == {"detail": "The uploaded file exceeds the 10 MB limit."}
+
+
+def test_reconstruct_endpoint_runs_processing_pipeline(monkeypatch) -> None:
+    monkeypatch.setenv("CVREFORM_ACCEPT_PDF", "true")
+    upload = client.post(
+        "/api/v1/cvs/upload",
+        files={"file": ("resume.pdf", b"%PDF-1.7\nCV", uploads.PDF_CONTENT_TYPE)},
+    ).json()
+    upload_id = upload["upload_id"]
+    asset = ExtractedAsset(
+        asset_id="asset-001",
+        filename="asset-001.png",
+        media_type="image/png",
+        width=100,
+        height=80,
+        size=7,
+        sha256="digest",
+        pages=(1,),
+        source_names=("image",),
+    )
+    document = CVHTMLResult(
+        html='<article class="cv-document"><img src="asset" /></article>',
+        css=".cv-document { color: black; }",
+        warnings=[],
+    )
+    processing = AsyncMock()
+    processing.process.return_value = CVProcessingResult(
+        document=document,
+        asset_extraction=AssetExtractionResult(assets=(asset,), warnings=()),
+        links=(
+            ExtractedLink(
+                link_id="link-001",
+                destination="https://example.com",
+                pages=(1,),
+                source_names=("PDF link annotation",),
+            ),
+        ),
+        output_directory=uploads.PROCESSED_DIRECTORY / upload_id,
+    )
+    app.dependency_overrides[get_cv_processing_service] = lambda: processing
+
+    response = client.post(f"/api/v1/cvs/{upload_id}/reconstruct")
+
+    assert response.status_code == 200
+    assert response.json()["html"] == document.html
+    assert response.json()["assets"][0]["filename"] == "asset-001.png"
+    assert response.json()["verified_link_count"] == 1
+    processing.process.assert_awaited_once_with(
+        source_document=uploads.UPLOAD_DIRECTORY / f"{upload_id}.pdf",
+        pdf_document=uploads.UPLOAD_DIRECTORY / f"{upload_id}.pdf",
+        output_directory=uploads.PROCESSED_DIRECTORY / upload_id,
+        asset_url_prefix=f"/api/v1/cvs/{upload_id}/assets",
+    )
+
+
+def test_reconstruct_docx_requires_converted_pdf() -> None:
+    upload = client.post(
+        "/api/v1/cvs/upload",
+        files={"file": ("resume.docx", make_docx(), uploads.DOCX_CONTENT_TYPE)},
+    ).json()
+
+    response = client.post(f"/api/v1/cvs/{upload['upload_id']}/reconstruct")
+
+    assert response.status_code == 409
+    assert response.json() == {
+        "detail": "This CV must be converted to PDF before reconstruction."
+    }

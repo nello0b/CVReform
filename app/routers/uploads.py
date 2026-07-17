@@ -5,21 +5,28 @@ from pathlib import Path
 from uuid import uuid4
 from zipfile import BadZipFile, ZipFile
 
-from fastapi import APIRouter, File, HTTPException, UploadFile, status
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
 from pydantic import BaseModel
 from starlette.concurrency import run_in_threadpool
+from starlette.responses import FileResponse
 
+from app.services.cv_processing import CVProcessingService, get_cv_processing_service
+from app.services.cv_reconstruction import CVReconstructionError
+from app.services.document_asset_extractor import AssetExtractionError
 from app.services.document_converter import (
     DocumentConversionError,
     DocumentConverterNotFoundError,
     convert_docx_to_pdf,
 )
+from app.services.document_link_extractor import LinkExtractionError
+from app.services.pdf_page_renderer import PDFPageRenderingError
 
 router = APIRouter(prefix="/cvs", tags=["CV uploads"])
 logger = logging.getLogger("uvicorn.error")
 
 MAX_UPLOAD_SIZE = 10 * 1024 * 1024
 UPLOAD_DIRECTORY = Path("storage/uploads")
+PROCESSED_DIRECTORY = Path("storage/processed")
 DOCX_EXTENSION = ".docx"
 DOCX_CONTENT_TYPE = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
 PDF_EXTENSION = ".pdf"
@@ -60,6 +67,23 @@ class CVUploadResponse(BaseModel):
     size: int
     stored_filename: str
     pdf_filename: str | None
+
+
+class CVAssetResponse(BaseModel):
+    asset_id: str
+    filename: str
+    media_type: str
+    width: int
+    height: int
+
+
+class CVReconstructionResponse(BaseModel):
+    upload_id: str
+    html: str
+    css: str
+    warnings: list[str]
+    assets: list[CVAssetResponse]
+    verified_link_count: int
 
 
 def _safe_original_filename(filename: str) -> str:
@@ -212,3 +236,97 @@ async def upload_cv(file: UploadFile = File(...)) -> CVUploadResponse:
         stored_filename=stored_path.name,
         pdf_filename=pdf_path.name if pdf_path else None,
     )
+
+
+@router.post("/{upload_id}/reconstruct", response_model=CVReconstructionResponse)
+async def reconstruct_cv(
+    upload_id: str,
+    processing_service: CVProcessingService = Depends(get_cv_processing_service),
+) -> CVReconstructionResponse:
+    """Extract original images and reconstruct one stored CV as editable HTML/CSS."""
+
+    if len(upload_id) != 32 or any(character not in "0123456789abcdef" for character in upload_id):
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="CV upload not found.")
+
+    docx_path = UPLOAD_DIRECTORY / f"{upload_id}{DOCX_EXTENSION}"
+    pdf_path = UPLOAD_DIRECTORY / f"{upload_id}{PDF_EXTENSION}"
+    source_path = docx_path if docx_path.is_file() else pdf_path
+
+    if not source_path.is_file():
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="CV upload not found.")
+    if not pdf_path.is_file():
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="This CV must be converted to PDF before reconstruction.",
+        )
+
+    try:
+        result = await processing_service.process(
+            source_document=source_path,
+            pdf_document=pdf_path,
+            output_directory=PROCESSED_DIRECTORY / upload_id,
+            asset_url_prefix=f"/api/v1/cvs/{upload_id}/assets",
+        )
+    except (AssetExtractionError, LinkExtractionError) as error:
+        logger.exception("Document metadata extraction failed for upload_id=%s", upload_id)
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            detail="Images or hyperlinks could not be extracted from this CV.",
+        ) from error
+    except PDFPageRenderingError as error:
+        logger.exception("PDF page rendering failed for upload_id=%s", upload_id)
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            detail="The CV pages could not be rendered for visual reconstruction.",
+        ) from error
+    except CVReconstructionError as error:
+        logger.exception("CV reconstruction failed for upload_id=%s", upload_id)
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail="The CV could not be reconstructed by the AI service.",
+        ) from error
+
+    if _debug_enabled() and result.page_rendering is not None:
+        logger.info(
+            "[CVReform debug] Rendered PDF page references: upload_id=%s count=%d path=%s",
+            upload_id,
+            len(result.page_rendering.pages),
+            result.page_rendering.output_directory,
+        )
+
+    return CVReconstructionResponse(
+        upload_id=upload_id,
+        html=result.document.html,
+        css=result.document.css,
+        warnings=result.document.warnings,
+        verified_link_count=len(result.links),
+        assets=[
+            CVAssetResponse(
+                asset_id=asset.asset_id,
+                filename=asset.filename,
+                media_type=asset.media_type,
+                width=asset.width,
+                height=asset.height,
+            )
+            for asset in result.asset_extraction.assets
+        ],
+    )
+
+
+@router.get("/{upload_id}/assets/{filename}", response_class=FileResponse)
+async def get_reconstructed_asset(upload_id: str, filename: str) -> FileResponse:
+    """Serve one generated CV's controlled extracted image asset."""
+
+    valid_upload_id = len(upload_id) == 32 and all(
+        character in "0123456789abcdef" for character in upload_id
+    )
+    valid_filename = (
+        filename.startswith("asset-")
+        and Path(filename).name == filename
+        and Path(filename).suffix.lower() in {".jpg", ".png"}
+    )
+    asset_path = PROCESSED_DIRECTORY / upload_id / "assets" / filename
+    if not valid_upload_id or not valid_filename or not asset_path.is_file():
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Asset not found.")
+
+    return FileResponse(asset_path)

@@ -71,17 +71,40 @@ Backend feature flags live in the root `.env` file. `setup.ps1` creates it from
 `.env.example` without replacing existing local choices.
 
 ```dotenv
+OPENAI_API_KEY=
+OPENAI_MODEL=gpt-5.4-mini
+OPENAI_TIMEOUT_SECONDS=60
+OPENAI_MAX_RETRIES=2
+OPENAI_MAX_CONCURRENT_REQUESTS=2
 CVREFORM_ACCEPT_DOCX=true
 CVREFORM_ACCEPT_PDF=true
 CVREFORM_CONVERT_DOCX_TO_PDF=true
+CVREFORM_SEND_PAGE_IMAGES=true
+CVREFORM_PAGE_IMAGE_DPI=150
 SOFFICE_PATH=
 ```
+
+Put the real API key only in the ignored root `.env`. Leave
+`OPENAI_API_KEY=` empty in `.env.example`; it documents the required setting
+without exposing a secret.
+
+The remaining `OPENAI_*` settings select the model and apply conservative local
+request timeout, retry, and concurrency limits. They do not make API calls by
+themselves.
 
 Each behavior can be controlled independently:
 
 - `CVREFORM_ACCEPT_DOCX` controls DOCX uploads.
 - `CVREFORM_ACCEPT_PDF` controls PDF uploads.
 - `CVREFORM_CONVERT_DOCX_TO_PDF` creates a PDF visual reference after a DOCX upload.
+- `CVREFORM_SEND_PAGE_IMAGES` renders and sends full-page PNG references to OpenAI.
+- `CVREFORM_PAGE_IMAGE_DPI` controls page-image resolution from 72 to 300 DPI.
+
+When page images are enabled, CVReform sends both the original PDF and an ordered PNG
+screenshot of each page. The PDF remains the source for exact content and links, while the
+screenshots emphasize layout, typography, spacing, colors, borders, and page proportions.
+Page screenshots increase image-token usage and are stored only as processing artifacts; they
+are not inserted into the generated CV.
 
 The frontend automatically shows whichever input formats the API reports. LibreOffice
 is only required when DOCX input and DOCX-to-PDF conversion are both enabled.

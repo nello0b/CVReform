@@ -10,6 +10,11 @@ readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
     "fastapi>=0.115,<1.0",
+    "openai>=2.0,<3.0",
+    "pikepdf>=10.10,<11.0",
+    "pillow>=12.0,<13.0",
+    "pymupdf>=1.26,<2.0",
+    "pydantic-settings>=2.10,<3.0",
     "python-multipart>=0.0.20,<1.0",
     "uvicorn[standard]>=0.34,<1.0",
 ]
@@ -27,6 +32,9 @@ packages = ["app"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-p no:cacheprovider"
+markers = [
+    "manual: tests that use private developer-provided files and run only when enabled",
+]
 
 [tool.ruff]
 line-length = 100

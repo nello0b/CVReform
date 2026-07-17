@@ -59,7 +59,7 @@ else {
     ""
 }
 
-& $VenvPython -c "import fastapi, httpx, pytest, uvicorn" 2>$null
+& $VenvPython -c "import fastapi, httpx, openai, pikepdf, PIL, pydantic_settings, pytest, uvicorn" 2>$null
 $PythonDependenciesAvailable = $LASTEXITCODE -eq 0
 $PyprojectChanged = $RecordedHash -and $RecordedHash -ne $PyprojectHash
 
@@ -172,9 +172,16 @@ else {
 
 # Load the backend's private feature flags for the child FastAPI process.
 $ManagedBackendSettings = @(
+    "OPENAI_API_KEY",
+    "OPENAI_MODEL",
+    "OPENAI_TIMEOUT_SECONDS",
+    "OPENAI_MAX_RETRIES",
+    "OPENAI_MAX_CONCURRENT_REQUESTS",
     "CVREFORM_ACCEPT_DOCX",
     "CVREFORM_ACCEPT_PDF",
     "CVREFORM_CONVERT_DOCX_TO_PDF",
+    "CVREFORM_SEND_PAGE_IMAGES",
+    "CVREFORM_PAGE_IMAGE_DPI",
     "SOFFICE_PATH"
 )
 $PreviousBackendSettings = @{}
@@ -197,11 +204,36 @@ try {
     # Child processes inherit this flag, allowing debug output without changing production behavior.
     $Backend = Start-Process @BackendArguments
 
-    # Give Uvicorn a moment to report immediate startup failures before Vite starts.
-    Start-Sleep -Milliseconds 750
-    $Backend.Refresh()
-    if ($Backend.HasExited) {
-        throw "FastAPI exited during startup with code $($Backend.ExitCode)."
+    # Uvicorn's reload process starts before its worker is ready to accept requests.
+    # Wait for the health endpoint so Vite cannot race the backend during startup.
+    $BackendOrigin = $BackendUri.GetLeftPart([UriPartial]::Authority)
+    $HealthUri = [Uri]::new("$BackendOrigin/api/v1/health")
+    $StartupDeadline = [DateTime]::UtcNow.AddSeconds(30)
+
+    while ($true) {
+        $Backend.Refresh()
+        if ($Backend.HasExited) {
+            throw "FastAPI exited during startup with code $($Backend.ExitCode)."
+        }
+
+        try {
+            $HealthResponse = Invoke-WebRequest `
+                -Uri $HealthUri `
+                -UseBasicParsing `
+                -TimeoutSec 1
+            if ($HealthResponse.StatusCode -eq 200) {
+                break
+            }
+        }
+        catch {
+            # Connection failures are expected while Uvicorn creates its worker process.
+        }
+
+        if ([DateTime]::UtcNow -ge $StartupDeadline) {
+            throw "FastAPI did not become ready at $HealthUri within 30 seconds."
+        }
+
+        Start-Sleep -Milliseconds 200
     }
 
     # Vite prints its actual URL, including any port configured in frontend/.env.
